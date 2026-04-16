@@ -4,6 +4,8 @@ import com.redko.lab2.model.Book;
 import com.redko.lab2.repository.BookRepository;
 import com.redko.lab2.request.BookCreateRequest;
 import com.redko.lab2.request.BookUpdateRequest;
+import com.redko.lab2.response.ApiResponse;
+import com.redko.lab2.response.BaseMetaData;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,9 +32,11 @@ public class BookService {
     private final BookRepository bookRepository;
 
     private List<Book> books = new ArrayList<>(
-            Arrays.asList(new Book("name","00001","description1"),
-                    new Book("2","name2","00002","description2"),
-            new Book("3","namwe3","00003","description3"))
+            Arrays.asList(
+                    new Book("name1", "00001", "description1"),
+                    new Book("name2", "00002", "description2"),
+                    new Book("name3", "00003", "description3")
+            )
     );
 
     @PostConstruct
@@ -95,6 +99,26 @@ public class BookService {
                     .build();
             return bookRepository.save(bookToUpdate);
         }
+        return null;
+    }
+
+    //------------------------- 12 03 response impl ------------------------------
+    public ApiResponse<BaseMetaData, Book> getByIdAsApiResponse(String id) {
+        Book bookPersisted = bookRepository.findById(id).orElse(null);
+        BaseMetaData baseMetaData = new BaseMetaData();
+        if (bookPersisted != null) {
+            ApiResponse<BaseMetaData, Book> response = new ApiResponse<>(baseMetaData, bookPersisted);
+            return response;
+        }
+
+        return null;
+    }
+
+    public  ApiResponse<BaseMetaData, Book> getAllAsApiResponse() {
+        return null;
+    }
+
+    public  ApiResponse<BaseMetaData, Book> updateAsApiResponse(Book book) {
         return null;
     }
 
