@@ -38,7 +38,6 @@ class BookServiceTest {
     void tearsDown(){
     }
 
-
     @Test
     void whenCreateBookThenBooksCountIncreasesByOne() {
         // given

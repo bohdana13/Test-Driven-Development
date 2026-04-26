@@ -3,13 +3,19 @@ package com.redko.lab2.service;
 import com.redko.lab2.model.Book;
 import com.redko.lab2.repository.BookRepository;
 import com.redko.lab2.request.BookCreateRequest;
+import com.redko.lab2.request.BookPageRequest;
 import com.redko.lab2.request.BookUpdateRequest;
 import com.redko.lab2.response.ApiResponse;
 import com.redko.lab2.response.BaseMetaData;
+import com.redko.lab2.response.PaginationMetaData;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -120,6 +126,39 @@ public class BookService {
 
     public  ApiResponse<BaseMetaData, Book> updateAsApiResponse(Book book) {
         return null;
+    }
+
+    public ApiResponse<PaginationMetaData, Book> getBooksPage(BookPageRequest request){
+
+        Pageable pageable = PageRequest.of(request.page(), request.size(),
+                Sort.by(Sort.Direction.DESC, "id"));
+
+        Page<Book> page = bookRepository.findAll(pageable);
+
+        PaginationMetaData metaData = PaginationMetaData.builder()
+                .code(200)
+                .number(page.getNumber())
+                .size(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isFirst(page.isFirst())
+                .isLast(page.isLast())
+                .build();
+
+        // --- ДОДАЙТЕ ЦЕЙ БЛОК КОДУ ---
+        // Якщо на поточній сторінці немає записів
+        if (page.isEmpty()) {
+            if (page.getTotalElements() == 0) {
+                // Якщо в базі взагалі порожньо
+                metaData.setErrorMessage("Warning: The list is empty");
+            } else {
+                // Якщо записи є, але сторінка занадто далека (Out of range)
+                metaData.setErrorMessage("Warning: Page value is out of range");
+            }
+        }
+        // ------------------------------
+
+        return new ApiResponse<>(metaData, page.getContent());
     }
 
 }
