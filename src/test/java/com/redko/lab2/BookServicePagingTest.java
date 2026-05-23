@@ -20,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -386,6 +388,46 @@ public class BookServicePagingTest {
         assertNotNull(response.getData());
         assertTrue(response.getData().isEmpty(), "Лист має бути порожнім, а не null");
         assertEquals(0, response.getData().size());
+    }
+
+    @Test
+    void whenRequestIsIncorrectThenGiveTheLastPage() {
+        // given
+        BookPageRequest request = new BookPageRequest(9, 4);
+
+        // when
+        ApiResponse<PaginationMetaData, Book> response = underTest.getBooksPage(request);
+
+        // then
+        assertNotNull(response);
+        assertNotNull(response.getMeta());
+
+        assertEquals(404, response.getMeta().getCode());
+        assertFalse(response.getMeta().isSuccess());
+        assertNotNull(response.getMeta().getErrorMessage());
+        assertTrue(response.getMeta().getErrorMessage()
+                .contains("Maximal page for the size is " + response.getMeta().getTotalPages()));
+
+        assertEquals(7, response.getMeta().getNumber());
+        assertEquals(4, response.getMeta().getSize());
+        assertEquals(30, response.getMeta().getTotalElements());
+        assertEquals(8, response.getMeta().getTotalPages());
+
+        assertFalse(response.getMeta().isFirst());
+        assertTrue(response.getMeta().isLast());
+
+        assertNotNull(response.getData());
+        assertFalse(response.getData().isEmpty());
+
+        assertEquals(2, response.getData().size());
+
+        assertEquals("name0", response.getData().get(1).getName());
+    }
+
+    @Test
+    void testLogging(CapturedOutput output){
+
+        assertTrue(output.toString().contains("Out of range"));
     }
 
 }

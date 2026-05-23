@@ -10,6 +10,7 @@ import com.redko.lab2.response.BaseMetaData;
 import com.redko.lab2.response.PaginationMetaData;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -30,7 +31,7 @@ import java.util.List;
 */
 ///  check CI pipeline with PR
 /// attempt 2
-
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class BookService {
@@ -128,11 +129,40 @@ public class BookService {
         return null;
     }
 
-    public ApiResponse<PaginationMetaData, Book> getBooksPage(BookPageRequest request){
+    public ApiResponse<PaginationMetaData, Book> getBooksPage(BookPageRequest request) {
+        int pageNumber = request.page();
+        int pageSize = request.size();
 
-        Pageable pageable = PageRequest.of(request.page(), request.size(),
-                Sort.by(Sort.Direction.DESC, "id"));
+        if (pageNumber < 0) throw new IllegalArgumentException("Page index must not be less than zero");
+        if (pageSize < 1) throw new IllegalArgumentException("Page size must not be less than one");
 
+        long totalElements = bookRepository.count();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+
+        if (pageNumber >= totalPages && totalElements > 0) {
+            log.warn("Out of range. Maximal page for the size is {}", totalPages);
+
+            int lastPage = totalPages - 1;
+            Pageable fallbackPageable = PageRequest.of(lastPage, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+            Page<Book> fallbackPage = bookRepository.findAll(fallbackPageable);
+
+            PaginationMetaData metaData = PaginationMetaData.builder()
+                    .code(404)
+                    .number(lastPage)
+                    .size(pageSize)
+                    .totalElements(totalElements)
+                    .totalPages(totalPages)
+                    .isFirst(lastPage == 0)
+                    .isLast(true)
+                    .build();
+
+            metaData.setSuccess(false);
+            metaData.setErrorMessage("Maximal page for the size is " + totalPages);
+
+            return new ApiResponse<>(metaData, fallbackPage.getContent());
+        }
+
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<Book> page = bookRepository.findAll(pageable);
 
         PaginationMetaData metaData = PaginationMetaData.builder()
@@ -145,20 +175,16 @@ public class BookService {
                 .isLast(page.isLast())
                 .build();
 
-        // --- ДОДАЙТЕ ЦЕЙ БЛОК КОДУ ---
-        // Якщо на поточній сторінці немає записів
+        metaData.setSuccess(true);
+
         if (page.isEmpty()) {
             if (page.getTotalElements() == 0) {
-                // Якщо в базі взагалі порожньо
                 metaData.setErrorMessage("Warning: The list is empty");
             } else {
-                // Якщо записи є, але сторінка занадто далека (Out of range)
                 metaData.setErrorMessage("Warning: Page value is out of range");
             }
         }
-        // ------------------------------
 
         return new ApiResponse<>(metaData, page.getContent());
     }
-
 }
